@@ -3,10 +3,11 @@
 # IMPORTANT
 I havn't done non-chess peices yet, so there are no built in non-chess peices and you can't do custom ones.
 
-
 Also, I havn't created a re-distributable exe with a menu/options. 
 
 You have to run the code manually. Sorry, there are instructions below.
+
+TODO: Optimize anything
 
 # Enviroment Preperation
 1. First download and install [racket](https://racket-lang.org/ "Racket Lang")
@@ -36,6 +37,11 @@ You have to run the "graph" function
 ```
 ![(graph 7 King '(1 5) '(8 5) '(8 8))](https://i.imgur.com/PNmZTW4.png)    ![(graph 8 King '(1 5) '(8 5) '(8 8) '((2 4)(2 5)(2 6)))](https://i.imgur.com/5H21vhZ.png)
 
+
+```scheme
+(graph 3 Queen '(1 1) '(1 8) '(8 8))
+```
+![Queen](https://i.imgur.com/gNOWJ2F.png)
 
 ## Trajectories
 You have to run either the horizon or admissible functions
