@@ -20,19 +20,14 @@ You have to run the code manually. Sorry, there are instructions below.
 ## Graphs
 You have to run the "graph" function
 
-(graph [moves] [piece] [start] [end] [dementions] [[blocked]])
+**(graph [moves] [piece] [start] [end] [dementions] [[blocked]])**
 
-[moves] = 1, 2, 3, ...
-
-[piece] = Queen, Rook, Knight, King, Pawn, Bishop (no others or custom yet)
-
-[start] = '(x y)
-
-[end]   = '(x y)
-
-[dementions] = '(width height)
-
-[[blocked]] = This field is an optional list of blocked spaces '((x y) (x y))
+    [moves] = 1, 2, 3, ...
+    [piece] = Queen, Rook, Knight, King, Pawn, Bishop (no others or custom yet)
+    [start] = '(x y)
+    [end]   = '(x y)
+    [dementions] = '(width height)
+    [[blocked]] = This field is an optional list of blocked spaces '((x y) (x y))
 
 ```scheme
 (graph 7 King '(1 5) '(8 5) '(8 8))
@@ -46,19 +41,14 @@ You have to run the "graph" function
 You have to run either the horizon or admissible functions
 
 
-(admissible [k] [piece] [start] [end] [dementions] [[blocked]])
-
-[k] = 1, 2, 3, ...
-
-[piece] = Queen, Rook, Knight, King, Pawn, Bishop (no others or custom yet)
-
-[start] = '(x y)
-
-[end]   = '(x y)
-
-[dementions] = '(width height)
-
-[[blocked]] = This field is an optional list of blocked spaces '((x y) (x y))
+**(admissible [k] [piece] [start] [end] [dementions] [[blocked]])**
+    
+    [k] = 1, 2, 3, ...
+    [piece] = Queen, Rook, Knight, King, Pawn, Bishop (no others or custom yet)
+    [start] = '(x y)
+    [end]   = '(x y)
+    [dementions] = '(width height)
+    [[blocked]] = This field is an optional list of blocked spaces '((x y) (x y))
 
 ```scheme
 >(admissible 1 Queen '(1 1) '(1 8) '(8 8))
