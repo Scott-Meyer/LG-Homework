@@ -1,0 +1,15 @@
+Extract "main.rkt" and "dyoo-while-loop.rkt" to the same folder
+
+the dyoo-while-loop.rkt is a racket package that can be found here:
+https://github.com/jbclements/while-loop
+
+Open the main.rkt in the DrRacket IDE, press the run button
+
+Go down into the REPL and enter one of the following commands:
+(distance Pawn '(8 8) '(15 15))
+(distance Bishop '(8 8) '(15 15))
+(distance Rook '(8 8) '(10 13) '((7 6) (7 7) (7 8) (3 1) (5 5) (9 12)))
+
+In essence:
+(distance [piece] [x, y] [width, height] [[blocked space x,y][blocked space x,y]]) 
+	where '(8 8) is actually a list with items '8' '8', and is short hand for (list 8 8)
