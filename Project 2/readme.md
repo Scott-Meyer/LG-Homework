@@ -68,3 +68,26 @@ You have to run either the horizon or admissible functions
   ((1 1) (1 2) (1 8)) 
   ((1 1) (8 1) (1 8)))
 ```
+
+
+**(horizon [k] [piece] [start] [end] [dementions] [[blocked]])**
+    
+    [k] = 1, 2, 3, ...
+    [piece] = Queen, Rook, Knight, King, Pawn, Bishop (no others or custom yet)
+    [start] = '(x y)
+    [end]   = '(x y)
+    [dementions] = '(width height)
+    [[blocked]] = This field is an optional list of blocked spaces '((x y) (x y))
+
+```scheme
+>(horizon 2 Queen '(1 1) '(1 8) '(8 8))
+'((((1 1) (1 8))) 
+  (((1 1) (8 8) (1 8)) 
+   ((1 1) (1 7) (1 8)) 
+   ((1 1) (1 6) (1 8)) 
+   ((1 1) (1 5) (1 8)) 
+   ((1 1) (1 4) (1 8)) 
+   ((1 1) (1 3) (1 8)) 
+   ((1 1) (1 2) (1 8)) 
+   ((1 1) (8 1) (1 8))))
+```
