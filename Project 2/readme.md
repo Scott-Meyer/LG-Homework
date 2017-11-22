@@ -13,6 +13,7 @@ You have to run the code manually. Sorry, there are instructions below.
 2. Download entire "project 2" directory
 3. open project2.rkt with DrRacket gui
 4. click run in the top right of DrRacket gui
+5. Enter functions into the REPL (interperter) at the bottom of the window. Find function examples further down in this readme
 
 # Running code
 
