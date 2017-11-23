@@ -111,25 +111,17 @@
                         [to-stop (map (λ (f) (short init f)) stops)]
                         [from-stop (map (λ (i) (short i final)) stops)])
                    (merge to-stop from-stop))]
-        [else (let* ([shortest (shortest-len SUM)]
-                     [dist (+ shortest degree)]
-                     [stops (map first (filter (λ (x) (member (second x) (range 2 (+ 1 dist)))) SUM))])
+        [else (let* ([dist (+ (shortest-len SUM) degree)]
+                     [stops (map first(filter (λ (x) (equal? dist (second x))) SUM))]
+                     [to-stop-short (map (λ (f) (short init f)) stops)]
+                     [from-stop-short (map (λ (i) (short i final)) stops)]
+                     [stops-1 (map first (filter (λ (x) (equal? (- dist 1) (second x))) SUM))]
+                     [to-stops-1 (map (λ (f) (short init f)) stops-1)]
+                     [from-stops-1 (map (λ (f) (admissible (- n 1) reachability f final dem block)) stops-1)])
                 (remove-duplicates
-                 (append*
-                  (for/list ([stop stops])
-                    (append*
-                     (for/list ([i (range shortest dist)]
-                                [j (reverse (range shortest dist))])
-                       (let* ([sum-to-stop (sum reachability init stop dem block)]
-                              [ad-to-stop (length->degree i sum-to-stop)]
-                              [sum-from-stop (sum reachability stop final dem block)]
-                              [ad-from-stop (length->degree j sum-from-stop)])
-                         (if (and ad-from-stop ad-to-stop)
-                             (let ([to-stop (admissible ad-to-stop reachability init stop dem block)]
-                                   [from-stop (admissible ad-from-stop reachability stop final dem block)])  
-                               (map (λ (xs) (append (first xs) (tail (second xs))))
-                                    (cartesian-product to-stop from-stop)))
-                             empty))))))))]))))
+                 (append
+                  (merge to-stops-1 from-stops-1)
+                  (merge to-stop-short from-stop-short))))]))))
     
 
 ;Paths with horizon
