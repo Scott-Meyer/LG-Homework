@@ -75,6 +75,24 @@
         (for/list ([f-traj f])
           (append t-traj (tail f-traj))))))))
 
+;Get the SUM table/matrix
+(define (sum reachability init final dem block)
+  (union (distance reachability init dem block)
+         (distance reachability final dem block)))
+
+;length->degree
+;;>(length->degree 2 (sum Queen '(1 1) '(1 8) '(8 8) '(empty)))
+;;2
+(define (length->degree len SUM)
+  (let ([lengths (sort (remove-duplicates (map second SUM)) < )])
+    (if (member len lengths)
+        (first
+         (flatten
+          (for/list ([i (range 1 (+ (length lengths) 1))]
+                     [l lengths])
+            (if (equal? l len) i empty))))
+        #f)))
+
 ;admissible
 ;;>(admissible 2 Queen '(1 1) '(1 8) '(8 8) empty)
 ;;'(((1 1) (8 8) (1 8))
@@ -93,15 +111,25 @@
                         [to-stop (map (λ (f) (short init f)) stops)]
                         [from-stop (map (λ (i) (short i final)) stops)])
                    (merge to-stop from-stop))]
-        [else (let* ([dist (+ (shortest-len SUM) degree)]
-                     [stops (map first (filter (λ (x) (equal? dist (second x))) SUM))])
+        [else (let* ([shortest (shortest-len SUM)]
+                     [dist (+ shortest degree)]
+                     [stops (map first (filter (λ (x) (member (second x) (range 2 (+ 1 dist)))) SUM))])
                 (remove-duplicates
                  (append*
                   (for/list ([stop stops])
-                    (for/list ([i (range 1 n)])
-                      (merge
-                       (admissible i reachability init stop dem block)
-                       (admissible (- n i) reachability stop final dem block)))))))]))))
+                    (append*
+                     (for/list ([i (range shortest dist)]
+                                [j (reverse (range shortest dist))])
+                       (let* ([sum-to-stop (sum reachability init stop dem block)]
+                              [ad-to-stop (length->degree i sum-to-stop)]
+                              [sum-from-stop (sum reachability stop final dem block)]
+                              [ad-from-stop (length->degree j sum-from-stop)])
+                         (if (and ad-from-stop ad-to-stop)
+                             (let ([to-stop (admissible ad-to-stop reachability init stop dem block)]
+                                   [from-stop (admissible ad-from-stop reachability stop final dem block)])  
+                               (map (λ (xs) (append (first xs) (tail (second xs))))
+                                    (cartesian-product to-stop from-stop)))
+                             empty))))))))]))))
     
 
 ;Paths with horizon
@@ -116,8 +144,11 @@
            [end (distance reachability final dem block)]
            [degrees (sort (remove-duplicates (map second (union start end))) < )]
            [h-deg (filter (λ (x) (<= x h)) degrees)])
-      (for/list ([i (range 1 (+ (length h-deg) 1))])
-        (admissible i reachability init final dem block)))))
+      (append
+       (for/list ([i (range 1 (head degrees))])
+         (list (list empty)))
+       (for/list ([i (range 1 (+ (length h-deg) 1))])
+         (admissible i reachability init final dem block))))))
 
 
 ;example data
@@ -154,17 +185,19 @@
   (λ (h reachability init final dems [blocked (list empty)])
   (let [(admissibilities (horizon h reachability init final dems blocked))]
     (for/list [(paths admissibilities)]
-      (plot (append
-             (list (points (list init final) #:size 10 #:line-width 10))
-             (if (empty? (flatten blocked))
-                 empty
-                 (list (points blocked #:size 12 #:line-width 12 #:color "red")))
-             (make-board dems)
-             (map (λ (x) (points x #:size 15 #:line-width 1)) paths)
-            ;    (map (λ (x) (lines x #:width 5 #:alpha 0.2)) paths)))))
-             (for/list [(path paths)
-                        (i (range 1 (+ (length paths) 1)))]
-               (lines path #:color i #:width 5 #:alpha 0.2))))))))
+      (if (empty? (flatten paths))
+          empty
+          (plot (append
+                 (list (points (list init final) #:size 10 #:line-width 10))
+                 (if (empty? (flatten blocked))
+                     empty
+                     (list (points blocked #:size 12 #:line-width 12 #:color "red")))
+                 (make-board dems)
+                 (map (λ (x) (points x #:size 15 #:line-width 1)) paths)
+                 ;    (map (λ (x) (lines x #:width 5 #:alpha 0.2)) paths)))))
+                 (for/list [(path paths)
+                            (i (range 1 (+ (length paths) 1)))]
+                   (lines path #:color i #:width 5 #:alpha 0.2)))))))))
 
 
 ;Main function for exe distribution

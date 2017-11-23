@@ -41,7 +41,7 @@ You have to run the "graph" function
 ```scheme
 (graph 3 Queen '(1 1) '(1 8) '(8 8))
 ```
-![Queen](https://i.imgur.com/gNOWJ2F.png)
+![Queen](https://i.imgur.com/8TGcFVA.png)
 
 ## Trajectories
 You have to run either the horizon or admissible functions
