@@ -139,7 +139,7 @@
       (append
        (for/list ([i (range 1 (head degrees))])
          (list (list empty)))
-       (for/list ([i (range 1 (+ (length h-deg) 1))])
+       (for/list ([i (range 1 4)])
          (admissible i reachability init final dem block))))))
 
 
