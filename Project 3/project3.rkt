@@ -19,7 +19,7 @@
 (define reti (G (list (P Pawn 1 '(3 6))(P King 1 '(8 8))
                       (P Pawn 2 '(8 5))(P King 2 '(1 6)))
                 '(8 8)
-                '(empty)))
+                (list empty)))
 
 ;midterm
 (define midterm (list (P Pawn 1 '(8 5))(P Pawn 1 '(7 5))(P King 1 '(7 8))(P Bishop 1 '(6 2))
@@ -139,6 +139,7 @@
 
 (Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) '(empty) '(empty))
 ;;>(graph-zone pdf8 (U (P Pawn 1 '(8 5)) (P Pawn 1 '(8 1)) 4))
+;;>(graph-zone reti (U (P Pawn 1 '(3 6)) (P Pawn 1 '(3 8)) 2))
 (define (graph-zone g u)
   (let* ([p1-color "green"]
          [p2-color "black"]
@@ -150,7 +151,7 @@
     (plot (append*
            (make-board (G-dem g))
            ;Graph blocked spaces
-           (if (empty? (G-block g))
+           (if (empty? (flatten (G-block g)))
                empty
                (list (points (G-block g) #:size 12 #:line-width 12 #:color "red")))
            ;Graph player 1 pieces
@@ -162,6 +163,6 @@
              (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
                    [tra (second t)])
                (cons
-                (points tra #:size 5 #:alpha 0.25 #:color color)
+                (points tra #:size 1 #:line-width 10 #:alpha 0.25 #:color color)
                 (list (lines tra #:width 3 #:alpha 0.25 #:color color)))))))))
             
