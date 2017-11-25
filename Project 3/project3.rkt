@@ -26,7 +26,7 @@
                       (P Pawn 2 '(5 6))(P King 2 '(6 5))(P Knight 2 '(5 1))))
 
 ;pdf8
-(define pdf8 (G (list (P Pawn 1 '(8 5))
+(define pdf8 (G (list (P Pawn 1 '(8 5))(P King 1 '(2 4))
                       (P King 2 '(6 6))(P Bishop 2 '(4 7)))
                 '(8 8)
                 '((4 5)(5 6)(6 7)(7 4)(7 3))))
@@ -50,17 +50,23 @@
 
 (define (tailG g)
   (G (tail (G-Ps g)) (G-dem g) (G-block g)))
+(define (fpG g)
+  (first (G-Ps g)))
 
-;steps
+
+;;;;;;;Modify zone, to run for all attack                      ;;;;;;;;;;
+
+
+;;;;;;;BEGIN ZONE BASED ON CLASS ZONE, REQUIRES MAIN START/GOAL;;;;;;;;;;
 ;;>(Z1 reti (U (P Pawn 1 '(3 6)) (P Pawn 1 '(3 8)) 2) '(empty) '(empty))
 ;;>(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) '(empty) '(empty))
 ;Zone1
-(define (Z1 g u v w)
+(define (Z1 g u v w time next-time)
   (define (Q1 horizon)
     (not (empty? (filter (λ (h) (not (empty? (flatten h)))) horizon))))
   (let ([main (horizon (U-hori u) (P-reach (U-Pi u)) (P-pos (U-Pi u)) (P-pos (U-Pf u)) '(8 8))])
     (if (Q1 main) ;Q1
-        (Z2 g u v w '(empty) '(empty)) ;two
+        (Z2 g u v w time next-time) ;two
         empty)))
 
 ;Zone2
@@ -72,35 +78,39 @@
              [time (for/list ([i (range 2 (+ 1 (length tra)))]
                               [p (tail tra)])
                      (list p i))])
-        (println (G-block g))
         (cons
          (list (U-Pi u) tra (- (length tra) 1))
          (Z3 g v w time next-time))) ;three
       empty))
 
 ;Zone3
-(define (Z3 g v w time next-time)
+(define Z3
+  (λ (g v w time next-time [not-connected empty])
   (define Q3
     (not (empty? (G-Ps g))))
   (if (not (empty? (G-Ps g))) ;Q3
       (if (member (P-pos (first (G-Ps g))) (map first time))
           (Z3 (tailG g) v w time next-time)
-          (Z4 g v w time next-time))
-      empty)) ;five
+          (Z4 g v w time next-time not-connected))
+      (Z5 g v w time next-time not-connected)))) ;five
 
 ;Zone4
-(define (Z4 g v w time next-time) 
+(define Z4
+  (λ (g v w time next-time [not-connected empty])
   (define Q4 #t)
   (if #t ;Q4
-      (let* ([p (first (G-Ps g))]
+      (let* ([next-time next-time]
+             [w w]
+             [p (first (G-Ps g))]
              ;Get trajectories that link from p to points on time
              [tras (foldl (λ (f acc)
-                            (let ([tra (max-horizon (second f)    ;max horizon based on time
-                                                    (P-reach p)   ;reachability of piece
-                                                    (P-pos p)     ;position of piece
-                                                    (first f)     ;goal based on time
-                                                    (G-dem g)
-                                                    (G-block g))])
+                            (let* ([cur-time (second f)]
+                                   [tra (max-horizon cur-time    ;max horizon based on time
+                                                     (P-reach p)   ;reachability of piece
+                                                     (P-pos p)     ;position of piece
+                                                     (first f)     ;goal based on time
+                                                     (G-dem g)
+                                                     (G-block g))])
                               (if tra
                                   ;Remove paths that go through main trajectory
                                   (let ([tra2 (filter (λ (t) (not (check-duplicates
@@ -108,7 +118,24 @@
                                                                            (tail (reverse t)))))) tra)])
                                     (if (empty? tra2)
                                         acc
-                                        (cons (first tra2) acc)))
+                                        ;We have decided to add a trajectory from a piece to something on V/Time
+                                        ;We have to add that trajectory to W/Nexttime, and add it to the acc list
+                                        (let* ([tra2 (first tra2)] ;only do the first trajectory
+                                               [tra2-len (- (length tra2) 1)]
+                                               [n-t-val (+ 1 (- cur-time tra2-len))]
+                                               [w-pts (if (empty? w) w (map first w))]
+                                               [nt-pts (if (empty? next-time) next-time (map first next-time))]
+                                               [ispos? (λ (pt pos) (equal? (first pt) pos))])
+                                          (begin
+                                            (set! w (foldl (λ (p acc) (if (member p w-pts)
+                                                                          acc
+                                                                          (cons (list p 1) acc))) w (tail tra2)))
+                                            (set! next-time (foldl (λ (p acc) (if (member p nt-pts)
+                                                                                  (if (< n-t-val (second (first (filter (λ (po) (ispos? po p)) acc))))
+                                                                                      (cons (list p n-t-val) (filter (λ (w-p) (not (ispos? w-p p))) acc))
+                                                                                      acc)
+                                                                                  (cons (list p n-t-val) acc))) next-time (tail tra2)))
+                                            (cons tra2 acc)))))
                                   acc)))
                           empty time)])  
         (if (not (empty? tras))
@@ -116,7 +143,7 @@
              (foldl (λ (t acc) (cons
                                 (list p t (- (length t) 1))
                                 acc)) empty tras)
-             (Z3 (tailG g) v w time next-time))
+             (Z3 (tailG g) v w time next-time not-connected))
             ;(let* ([tra (first tras)]
             ;       [w (map (λ (p) (list p 1)) tra)]
             ;       [next-time (for/list ([i (range 2 (+ 2 (length tra)))]
@@ -125,29 +152,37 @@
             ;  (cons
             ;   (list p tra (- (length tra) 1))
             ;   (Z3 (tailG g) v w time next-time)))
-            (Z3 (tailG g) v w time next-time)));three
-      empty)) ;three
+            (Z3 (tailG g) v w time next-time (cons (fpG g) not-connected))));three
+      empty))) ;three
   
 ;Zone5
-(define (five u v w time next-time)
-  (if (#t) ;Q5
-      empty ;three
-      empty)) ;six
+(define (Z5 g v w time next-time not-connected)
+  (if (not (empty? not-connected)) ;Q5
+      (let ([new-g (G not-connected (G-dem g) (G-block g))])
+        (Z3  new-g w empty next-time empty))
+      (Z6 g v w time next-time not-connected))) ;six
 
 ;Zone6
-(define (six u v w time next-time) empty)
+(define (Z6 g v w time next-time not-connected) empty)
+;;;;;;;END ZONE BASED ON CLASS ZONE, REQUIRES MAIN START/GOAL;;;;;;;;;;
 
-(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) '(empty) '(empty))
+
+
+;;;;;;;BEGIN GRAPHING/DISPLAYING;;;;;;;
+;(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) '(empty) '(empty))
 ;;>(graph-zone pdf8 (U (P Pawn 1 '(8 5)) (P Pawn 1 '(8 1)) 4))
 ;;>(graph-zone reti (U (P Pawn 1 '(3 6)) (P Pawn 1 '(3 8)) 2))
+;TODO: Print pieces
 (define (graph-zone g u)
   (let* ([p1-color "green"]
          [p2-color "black"]
-         [z (Z1 g u '(empty) '(empty))]
+         [z (Z1 g u empty empty empty empty)]
          [pieces (λ (p color) (list (points (map P-pos p) #:size 10 #:line-width 10 #:color color)))]
          [filter-for-player (λ (player p) (equal? (P-player p) player))]
          [P1p (filter (λ (p) (filter-for-player 1 p)) (G-Ps g))]
          [P2p (filter (λ (p) (filter-for-player 2 p)) (G-Ps g))])
+    (for/list ([t z])
+      (write-string (string-join (list "t(" (~a (P-reach (first t))) "," (~a (second t)) "," (~a (third t)) ")\n"))))
     (plot (append*
            (make-board (G-dem g))
            ;Graph blocked spaces
@@ -163,6 +198,6 @@
              (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
                    [tra (second t)])
                (cons
-                (points tra #:size 1 #:line-width 10 #:alpha 0.25 #:color color)
+                (points tra #:size 1 #:line-width 10 #:alpha 0.5 #:color color)
                 (list (lines tra #:width 3 #:alpha 0.25 #:color color)))))))))
-            
+;;;;;;;END GRAPHING/DISPLAYING;;;;;;;
