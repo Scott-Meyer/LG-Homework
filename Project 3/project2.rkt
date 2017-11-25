@@ -136,13 +136,25 @@
     (let* ([start (distance reachability init dem block)]
            [end (distance reachability final dem block)]
            [degrees (sort (remove-duplicates (map second (union start end))) < )]
-           [h-deg (filter (λ (x) (<= x h)) degrees)])
+           [h-deg (filter (λ (x) (<= x h)) degrees)]
+           [cur-admis 0])
       (append
-       (for/list ([i (range 1 (head degrees))])
-         (list (list empty)))
-       (for/list ([i (range 1 4)])
-         (admissible i reachability init final dem block))))))
+       (for/list ([i (range 1 (+ 1 h))])
+         (if (member i degrees)
+             (begin
+               (set! cur-admis (+ 1 cur-admis))
+               (admissible cur-admis reachability init final dem block))
+             (list (list empty))))))))
 
+;Max horizon, given a max to search till, return admissible 1 if horizon is long enough
+(define max-horizon
+  (λ (h reachability init final dem [block (list empty)])
+    (let* ([start (distance reachability init dem block)])
+      (if (member final (map first start))
+          (if (<= (second (first (filter (λ (x) (equal? (first x) final)) start))) h)
+              (admissible 1 reachability init final dem block)
+              #f)
+          #f))))
 
 ;example data
 ;(distance piece [x y] [h w] [(xy) (xy)])
