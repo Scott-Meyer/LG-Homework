@@ -9,6 +9,10 @@
 ;rest -> tail
 (define (tail ls) (rest ls))
 
+;Reverse direction of a resachability
+(define (reverse-r r)
+  (λ (xc yc p) (r (- xc) (- yc) p)))
+
 ;Union together two lists of reachability
 (define (union ls1 ls2)
   ;Used to fold, takes a position, 2nd reacability list, accumulator
@@ -42,7 +46,7 @@
 (define shortest
          (λ (reachability init final dem [block (list empty)])
   (let* [(start (distance reachability init dem block))
-        (end (distance reachability final dem block))
+        (end (distance (reverse-r reachability) final dem block))
         (valids (map first(valid-spots (union start end))))
         (dist (λ (cur-p) (distance reachability cur-p dem block)))
         (next-moves (λ (cur-p cur-m)
