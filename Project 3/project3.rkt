@@ -1,6 +1,7 @@
 #lang racket
 (require "main.rkt")
 (require "project2.rkt")
+(require plot)
 
 ;Pieces have a reachability function, a player, and a position
 (struct P (reach player pos))
@@ -25,7 +26,7 @@
                       (P Pawn 2 '(5 6))(P King 2 '(6 5))(P Knight 2 '(5 1))))
 
 ;pdf8
-(define pdf8 (G (list (P King 1 '(8 5))
+(define pdf8 (G (list (P Pawn 1 '(8 5))
                       (P King 2 '(6 6))(P Bishop 2 '(4 7)))
                 '(8 8)
                 '((4 5)(5 6)(6 7)(7 4)(7 3))))
@@ -135,3 +136,32 @@
 
 ;Zone6
 (define (six u v w time next-time) empty)
+
+(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) '(empty) '(empty))
+;;>(graph-zone pdf8 (U (P Pawn 1 '(8 5)) (P Pawn 1 '(8 1)) 4))
+(define (graph-zone g u)
+  (let* ([p1-color "green"]
+         [p2-color "black"]
+         [z (Z1 g u '(empty) '(empty))]
+         [pieces (λ (p color) (list (points (map P-pos p) #:size 10 #:line-width 10 #:color color)))]
+         [filter-for-player (λ (player p) (equal? (P-player p) player))]
+         [P1p (filter (λ (p) (filter-for-player 1 p)) (G-Ps g))]
+         [P2p (filter (λ (p) (filter-for-player 2 p)) (G-Ps g))])
+    (plot (append*
+           (make-board (G-dem g))
+           ;Graph blocked spaces
+           (if (empty? (G-block g))
+               empty
+               (list (points (G-block g) #:size 12 #:line-width 12 #:color "red")))
+           ;Graph player 1 pieces
+           (pieces P1p p1-color)
+           ;Graph player 2 pieces
+           (pieces P2p p2-color)
+           ;Map the zone
+           (for/list ([t z])
+             (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
+                   [tra (second t)])
+               (cons
+                (points tra #:size 5 #:alpha 0.25 #:color color)
+                (list (lines tra #:width 3 #:alpha 0.25 #:color color)))))))))
+            
