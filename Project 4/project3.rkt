@@ -208,7 +208,6 @@
                                                  [nt-pts (if (empty? next-time) next-time (map first next-time))]
                                                  [ispos? (λ (pt pos) (equal? (first pt) pos))])
                                             (begin
-                                              (println tra2)
                                               (set! w (foldl (λ (p acc) (if (member p w-pts)
                                                                             acc
                                                                             (cons (list p 1) acc))) w (tail tra2)))
