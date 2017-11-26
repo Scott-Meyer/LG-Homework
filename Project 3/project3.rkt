@@ -11,22 +11,39 @@
 (struct G (Ps dem block))
 ;TODO: use this
 (struct T (Pi tra len))
+(struct Fix (reach func))
+
+(define player-specific (list (Fix Pawn (λ (p) (Pawnp p)))))
+(define (get-plsp p)
+  (if (member (P-reach p) (map Fix-reach player-specific))
+      (first (filter (λ (ps) (equal? (P-reach p) (Fix-reach ps))) player-specific))
+      #f))
+(define (fixG g)
+  (G (foldl (λ (p acc)
+              (if (get-plsp p)
+                  (cons
+                   (P ((Fix-func (get-plsp p)) (P-player p)) (P-player p) (P-pos p))
+                   acc)
+                  (cons p acc))) empty (G-Ps g))
+     (G-dem g)
+     (G-block g)))
+
 
 ;TODO: Create input
 ;'((piece player position)(piece player position)
 ;  (piece player position)(piece player position))
 ;Reti endgame
-(define reti (G (list (P (Pawnp W) W '(3 6))(P King W '(8 8))
-                      (P (Pawnp B) B '(8 5))(P King B '(1 6)))
+(define reti (G (list (P Pawn W '(3 6))(P King W '(8 8))
+                      (P Pawn B '(8 5))(P King B '(1 6)))
                 '(8 8)
                 (list empty)))
 
 ;midterm
-(define midterm (list (P (Pawnp W) 1 '(8 5))(P Pawn 1 '(7 5))(P King 1 '(7 8))(P Bishop 1 '(6 2))
-                      (P (Pawnp B) 2 '(5 6))(P King 2 '(6 5))(P Knight 2 '(5 1))))
+(define midterm (list (P Pawn 1 '(8 5))(P Pawn 1 '(7 5))(P King 1 '(7 8))(P Bishop 1 '(6 2))
+                      (P Pawn 2 '(5 6))(P King 2 '(6 5))(P Knight 2 '(5 1))))
 
 ;pdf8
-(define pdf8 (G (list (P (Pawnp B) B '(8 5))(P King B '(2 4))
+(define pdf8 (G (list (P Pawn B '(8 5))(P King B '(2 4))
                       (P King W '(6 6))(P Bishop W '(4 7)))
                 '(8 8)
                 '((4 5)(5 6)(6 7)(7 4)(7 3))))
@@ -54,24 +71,17 @@
   (first (G-Ps g)))
 
 
-;;;;;;;Modify zone, to run for all attack                      ;;;;;;;;;;
-;;>(zone reti)
-(define (zone g) empty)
-  
-;;;;;;;End modify                                              ;;;;;;;;;;
-
-
 ;;;;;;;BEGIN ZONE BASED ON CLASS ZONE, REQUIRES MAIN START/GOAL;;;;;;;;;;
 ;;>(Z1 reti (U (P Pawn 1 '(3 6)) (P Pawn 1 '(3 8)) 2) empty empty))
 ;;>(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) empty empty))
 ;Zone1
 (define (Z1 g u v w time next-time)
+  (define gf (fixG g))
   (define (Q1 horizon)
     (not (empty? (filter (λ (h) (not (empty? (flatten h)))) horizon))))
   (let ([main (horizon (U-hori u) (P-reach (U-Pi u)) (P-pos (U-Pi u)) (P-pos (U-Pf u)) '(8 8))])
-    (println main)
     (if (Q1 main) ;Q1
-        (Z2 g u v w time next-time) ;two
+        (Z2 gf u v w time next-time) ;two
         empty)))
 
 ;Zone2
@@ -168,8 +178,7 @@
 ;Zone5
 (define (Z5 g u v w time next-time not-connected)
   (define Q5
-    (and (not (empty? not-connected))
-         (empty? v)))
+    (not (empty? w)))
   (if Q5
       (let ([new-g (G not-connected (G-dem g) (G-block g))])
         (Z3  new-g u w empty next-time empty))
@@ -194,6 +203,7 @@
          [filter-for-player (λ (player p) (equal? (P-player p) player))]
          [P1p (filter (λ (p) (filter-for-player 1 p)) (G-Ps g))]
          [P2p (filter (λ (p) (filter-for-player 2 p)) (G-Ps g))])
+
     (for/list ([t z])
       (write-string (string-join (list "t(" (~a (P-reach (first t))) "," (~a (second t)) "," (~a (third t)) ")\n"))))
     (plot (append*
@@ -214,3 +224,32 @@
                 (points tra #:size 1 #:line-width 10 #:alpha 0.5 #:color color)
                 (list (lines tra #:width 3 #:alpha 0.25 #:color color)))))))))
 ;;;;;;;END GRAPHING/DISPLAYING;;;;;;;
+
+
+;;;;;;;Modify zone, to run for all attack                      ;;;;;;;;;;
+;;>(zone reti)
+(define (zone g)
+  (let* ([g (fixG g)]
+         [pieces (G-Ps g)]
+         ;pieces other than given piece
+         [other-p (λ(p) (filter (λ(p2)
+                                  (not (equal?(P-pos p)
+                                              (P-pos p2))))
+                                pieces))]
+         ;attackable pieces
+         [attack-p (λ(p) (filter (λ(p2)
+                                   (not (equal?(P-player p)
+                                               (P-player p2))))
+                                 (other-p p)))])
+    (for/list ([p pieces])
+      (for/list ([ap (attack-p p)])
+        (let* ([pdist (distance (P-reach p) (P-pos p) (G-dem g) (G-block g))]
+               [appos (P-pos ap)]
+               [pdistap (filter (λ(p)(not(equal? appos (first p)))) pdist)])
+          (if (empty? pdistap)
+              empty
+              (let* ([minhor (second (first pdistap))]
+                     [u (U p ap minhor)])
+                (graph-zone g u))))))))
+  
+;;;;;;;End modify                                              ;;;;;;;;;;

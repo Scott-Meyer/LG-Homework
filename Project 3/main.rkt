@@ -4,7 +4,7 @@
 ;(println "Hello")
 ;(define a (read-string (current-input-port) 'any))
 ;(println a)
-(provide distance Queen Rook Knight King Pawn Pawnp Bishop White Black W B)
+(provide distance Queen Rook Knight King Pawn Pawnp PawnB PawnW Bishop White Black W B)
 
 (define White 1)
 (define W 1)
@@ -43,10 +43,12 @@
        (not (member (list (+ (first p) xc) (+ (second p) yc)) blocked))
        (Rook (movement xc) (movement yc) p))))
 (define (Pawn xc yc p) (and (equal? (abs yc) 1) (zero? xc)))
+(define (PawnW xc yc p) (and (equal? yc 1) (zero? xc)))
+(define (PawnB xc yc p) (and (equal? yc -1) (zero? xc)))
 (define (Pawnp p)
   (if (equal? p White)
-      (λ (xc yc p) (and (equal? yc 1) (zero? xc)))
-      (λ (xc yc p) (and (equal? yc -1) (zero? xc)))))
+      PawnW
+      PawnB))
 (define (Queen xc yc p) (or (Rook xc yc p) (Bishop xc yc p)))
 
 (define (reachable? reachability p1 p2)

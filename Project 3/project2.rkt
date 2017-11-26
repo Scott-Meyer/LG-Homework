@@ -11,7 +11,9 @@
 
 ;Reverse direction of a resachability
 (define (reverse-r r)
-  (λ (xc yc p) (r (- xc) (- yc) p)))
+  (cond [(equal? r PawnB) PawnW]
+        [(equal? r PawnW) PawnB]
+        [else r]))
 
 ;Union together two lists of reachability
 (define (union ls1 ls2)
