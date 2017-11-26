@@ -1,19 +1,12 @@
 #lang racket
 (require "main.rkt")
 (require plot)
-(provide (all-defined-out))
 
 ;first -> head
 (define (head ls) (first ls))
 
 ;rest -> tail
 (define (tail ls) (rest ls))
-
-;Reverse direction of a resachability
-(define (reverse-r r)
-  (cond [(equal? r PawnB) PawnW]
-        [(equal? r PawnW) PawnB]
-        [else r]))
 
 ;Union together two lists of reachability
 (define (union ls1 ls2)
@@ -48,7 +41,7 @@
 (define shortest
          (λ (reachability init final dem [block (list empty)])
   (let* [(start (distance reachability init dem block))
-        (end (distance (reverse-r reachability) final dem block))
+        (end (distance reachability final dem block))
         (valids (map first(valid-spots (union start end))))
         (dist (λ (cur-p) (distance reachability cur-p dem block)))
         (next-moves (λ (cur-p cur-m)
@@ -118,17 +111,25 @@
                         [to-stop (map (λ (f) (short init f)) stops)]
                         [from-stop (map (λ (i) (short i final)) stops)])
                    (merge to-stop from-stop))]
-        [else (let* ([dist (+ (shortest-len SUM) degree)]
-                     [stops (map first(filter (λ (x) (equal? dist (second x))) SUM))]
-                     [to-stop-short (map (λ (f) (short init f)) stops)]
-                     [from-stop-short (map (λ (i) (short i final)) stops)]
-                     [stops-1 (map first (filter (λ (x) (equal? (- dist 1) (second x))) SUM))]
-                     [to-stops-1 (map (λ (f) (short init f)) stops-1)]
-                     [from-stops-1 (map (λ (f) (admissible (- n 1) reachability f final dem block)) stops-1)])
+        [else (let* ([shortest (shortest-len SUM)]
+                     [dist (+ shortest degree)]
+                     [stops (map first (filter (λ (x) (member (second x) (range 2 (+ 1 dist)))) SUM))])
                 (remove-duplicates
-                 (append
-                  (merge to-stops-1 from-stops-1)
-                  (merge to-stop-short from-stop-short))))]))))
+                 (append*
+                  (for/list ([stop stops])
+                    (append*
+                     (for/list ([i (range shortest dist)]
+                                [j (reverse (range shortest dist))])
+                       (let* ([sum-to-stop (sum reachability init stop dem block)]
+                              [ad-to-stop (length->degree i sum-to-stop)]
+                              [sum-from-stop (sum reachability stop final dem block)]
+                              [ad-from-stop (length->degree j sum-from-stop)])
+                         (if (and ad-from-stop ad-to-stop)
+                             (let ([to-stop (admissible ad-to-stop reachability init stop dem block)]
+                                   [from-stop (admissible ad-from-stop reachability stop final dem block)])  
+                               (map (λ (xs) (append (first xs) (tail (second xs))))
+                                    (cartesian-product to-stop from-stop)))
+                             empty))))))))]))))
     
 
 ;Paths with horizon
@@ -142,28 +143,13 @@
     (let* ([start (distance reachability init dem block)]
            [end (distance reachability final dem block)]
            [degrees (sort (remove-duplicates (map second (union start end))) < )]
-           [h-deg (filter (λ (x) (<= x h)) degrees)]
-           [cur-admis 0])
+           [h-deg (filter (λ (x) (<= x h)) degrees)])
       (append
-       (for/list ([i (range 1 (+ 1 h))])
-         (if (member i degrees)
-             (begin
-               (set! cur-admis (+ 1 cur-admis))
-               (admissible cur-admis reachability init final dem block))
-             (list (list empty))))))))
+       (for/list ([i (range 1 (head degrees))])
+         (list (list empty)))
+       (for/list ([i (range 1 (+ (length h-deg) 1))])
+         (admissible i reachability init final dem block))))))
 
-;Max horizon, given a max to search till, return admissible 1 if horizon is long enough
-(define max-horizon
-  (λ (h reachability init final dem [block (list empty)])
-        (cond [(equal? init final) (list (list init))]
-              [(member final block) #f]
-              [(equal? 0 h) #f]
-              [else (let* ([start (distance reachability init dem block)])
-                      (if (member final (map first start))
-                          (if (<= (second (first (filter (λ (x) (equal? (first x) final)) start))) h)
-                              (admissible 1 reachability init final dem block)
-                              #f)
-                          #f))])))
 
 ;example data
 ;(distance piece [x y] [h w] [(xy) (xy)])

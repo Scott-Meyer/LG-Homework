@@ -1,7 +1,8 @@
 # LG Project 3
 
 ## Notes
-1.  I couldn't do diagonal attacking pawns, it would require a huge re-work of project 1+2
+~~1.  I couldn't do diagonal attacking pawns, it would require a huge re-work of project 1+2~~
+1.    Pawns diagonally attack for negation, but not for main zones in all attack zones. There was a problem with incorrect duplication of code =/
 
 # Enviroment Preperation
 1. First download and install [racket](https://racket-lang.org/ "Racket Lang")
@@ -40,7 +41,7 @@ lets do Assignment 5 problem 11. (this has a forced main trajectory)
              (U (P Bishop W '(6 2))(P Bishop W '(5 5)) 2)
              '((6 2)(4 4)(5 5)))
 ```
-![Queen](https://i.imgur.com/tNN4JTr.png)
+![Queen](https://i.imgur.com/asQFdwv.png)
 ## All Attack Zones
 
 All attack zones is a little easier, it just requires a Game object
