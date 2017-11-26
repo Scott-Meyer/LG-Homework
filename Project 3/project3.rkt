@@ -153,7 +153,7 @@
                                                                             acc
                                                                             (cons (list p 1) acc))) w (tail tra2)))
                                               (set! next-time (foldl (λ (p acc) (if (member p nt-pts)
-                                                                                    (if (< n-t-val (second (first (filter (λ (po) (ispos? po p)) acc))))
+                                                                                    (if (> n-t-val (second (first (filter (λ (po) (ispos? po p)) acc))))
                                                                                         (cons (list p n-t-val) (filter (λ (w-p) (not (ispos? w-p p))) acc))
                                                                                         acc)
                                                                                     (cons (list p n-t-val) acc))) next-time (tail tra2)))
@@ -199,7 +199,7 @@
 ;;>(graph-zone reti (U (P King B '(1 6)) (P King B '(3 8)) 2))
 ;TODO: Print pieces
 (define (graph-zone g u)
-  (let* ([p1-color "green"]
+  (let* ([p1-color "blue"]
          [p2-color "black"]
          [blocked (G-block g)]
          [nonup (filter (λ(p)(not(or(equal? (P-pos p) (P-pos (U-Pi u)))
@@ -226,13 +226,32 @@
            (pieces P1p p1-color)
            ;Graph player 2 pieces
            (pieces P2p p2-color)
-           ;Map the zone
-           (for/list ([t z])
-             (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
-                   [tra (second t)])
-               (cons
-                (points tra #:size 1 #:line-width 10 #:alpha 0.5 #:color color)
-                (list (lines tra #:width 3 #:alpha 0.25 #:color color)))))))))
+           (if (> (length z) 0)
+               (list
+                ;make main traj look different
+                (let* ([t (first z)]
+                       [color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
+                       [tra (second t)])
+                  (cons
+                   (points tra #:size 1 #:line-width 11 #:alpha 0.8 #:color color)
+                   (list (lines tra #:width 3 #:alpha 0.5 #:color color))))
+                ;Map the zone
+                (for/list ([t (tail z)])
+                  (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
+                        [tra (second t)])
+                    (cons
+                     (points tra #:size 1 #:line-width 10 #:alpha 0.5 #:color color)
+                     (list (lines tra #:width 3 #:alpha 0.25 #:color color))))))
+               empty))
+          #:width 250
+          #:height 250
+          #:title (string-append "Zone: "
+                                 (~a (P-reach (first (first z))))
+                                 (~a (first (second (first z))))
+                                 (~a (last (second (first z))))
+                                 "\n")
+          #:x-label #f
+          #:y-label #f)))
 ;;;;;;;END GRAPHING/DISPLAYING;;;;;;;
 
 
