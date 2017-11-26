@@ -77,21 +77,25 @@
 ;;>(Z1 reti (U (P Pawn 1 '(3 6)) (P Pawn 1 '(3 8)) 2) empty empty))
 ;;>(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) empty empty))
 ;Zone1
-(define (Z1 g u v w time next-time)
+(define Z1
+  (λ (g u v w time next-time [f-main empty])
   (define gf (fixG g))
   (define (Q1 horizon)
     (not (empty? (filter (λ (h) (not (empty? (flatten h)))) horizon))))
   (let ([main (horizon (U-hori u) (P-reach (U-Pi u)) (P-pos (U-Pi u)) (P-pos (U-Pf u)) '(8 8))])
     (if (Q1 main) ;Q1
-        (Z2 gf u v w time next-time) ;two
-        empty)))
+        (Z2 gf u v w time next-time f-main) ;two
+        empty))))
 
 ;Zone2
-(define (Z2 g u v w time next-time)
+(define (Z2 g u v w time next-time f-main)
   (define Q2 #t)
   (if Q2
       (let* ([tras (admissible 1 (P-reach (U-Pi u)) (P-pos (U-Pi u)) (P-pos (U-Pf u)) (G-dem g) (G-block g))]
-             [tra (first tras)]
+             ;first shortest tra from p to p in u, unless we are forcing a main
+             [tra (if (empty? f-main)
+                      (first tras)
+                      f-main)]
              [v (map (λ (p) (list p 1)) (tail tra))]
              [time (for/list ([i (range 2 (+ 1 (length tra)))]
                               [p (tail tra)])
@@ -197,8 +201,14 @@
 ;;>(graph-zone pdf8 (U (P (Pawnp B) B '(8 5)) (P (Pawnp B) B '(8 1)) 4))
 ;;>(graph-zone reti (U (P (Pawnp W) 1 '(3 6)) (P (Pawnp W) 1 '(3 8)) 2))
 ;;>(graph-zone reti (U (P King B '(1 6)) (P King B '(3 8)) 2))
+#|>(graph-zone (G (list (P King B '(2 7))(P Knight B '(7 7))(P Pawn B '(5 5))
+                        (P King W '(2 1))(P Bishop W '(6 2))(P Pawn W '(3 3))(P Pawn W '(4 5))) '(8 8) empty)
+               (U (P Bishop W '(6 2))(P Bishop W '(5 5)) 2)
+               '((6 2)(4 4)(5 5)))
+|#
 ;TODO: Print pieces
-(define (graph-zone g u)
+(define graph-zone
+  (λ (g u [f-main empty])
   (let* ([p1-color "blue"]
          [p2-color "black"]
          [blocked (G-block g)]
@@ -208,7 +218,7 @@
                        (G-block g)
                        (append (G-block g) (map P-pos nonup)))]
          [g2 (G (G-Ps g) (G-dem g) newblock)]
-         [z (Z1 g2 u empty empty empty empty)]
+         [z (Z1 g2 u empty empty empty empty f-main)]
          [pieces (λ (p color) (list (points (map P-pos p) #:size 10 #:line-width 10 #:color color)))]
          [filter-for-player (λ (player p) (equal? (P-player p) player))]
          [P1p (filter (λ (p) (filter-for-player 1 p)) (G-Ps g))]
@@ -251,7 +261,7 @@
                                  (~a (last (second (first z))))
                                  "\n")
           #:x-label #f
-          #:y-label #f)))
+          #:y-label #f))))
 ;;;;;;;END GRAPHING/DISPLAYING;;;;;;;
 
 
