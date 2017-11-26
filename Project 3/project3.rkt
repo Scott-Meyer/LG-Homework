@@ -28,6 +28,8 @@
      (G-dem g)
      (G-block g)))
 
+(define (notempty? x)
+  (not (empty? x)))
 
 ;TODO: Create input
 ;'((piece player position)(piece player position)
@@ -194,24 +196,32 @@
 ;(Z1 pdf8 (U (P King 1 '(8 5)) (P King 1 '(8 1)) 4) '(empty) '(empty))
 ;;>(graph-zone pdf8 (U (P (Pawnp B) B '(8 5)) (P (Pawnp B) B '(8 1)) 4))
 ;;>(graph-zone reti (U (P (Pawnp W) 1 '(3 6)) (P (Pawnp W) 1 '(3 8)) 2))
+;;>(graph-zone reti (U (P King B '(1 6)) (P King B '(3 8)) 2))
 ;TODO: Print pieces
 (define (graph-zone g u)
   (let* ([p1-color "green"]
          [p2-color "black"]
-         [z (Z1 g u empty empty empty empty)]
+         [blocked (G-block g)]
+         [nonup (filter (λ(p)(not(or(equal? (P-pos p) (P-pos (U-Pi u)))
+                                    (equal? (P-pos p) (P-pos (U-Pf u)))))) (G-Ps g))]
+         [newblock (if (empty? nonup)
+                       (G-block g)
+                       (append (G-block g) (map P-pos nonup)))]
+         [g2 (G (G-Ps g) (G-dem g) newblock)]
+         [z (Z1 g2 u empty empty empty empty)]
          [pieces (λ (p color) (list (points (map P-pos p) #:size 10 #:line-width 10 #:color color)))]
          [filter-for-player (λ (player p) (equal? (P-player p) player))]
          [P1p (filter (λ (p) (filter-for-player 1 p)) (G-Ps g))]
          [P2p (filter (λ (p) (filter-for-player 2 p)) (G-Ps g))])
 
-    (for/list ([t z])
-      (write-string (string-join (list "t(" (~a (P-reach (first t))) "," (~a (second t)) "," (~a (third t)) ")\n"))))
+    ;(for/list ([t z])
+    ;  (write-string (string-join (list "t(" (~a (P-reach (first t))) "," (~a (second t)) "," (~a (third t)) ")\n"))))
     (plot (append*
            (make-board (G-dem g))
            ;Graph blocked spaces
-           (if (empty? (flatten (G-block g)))
+           (if (empty? (flatten blocked))
                empty
-               (list (points (G-block g) #:size 12 #:line-width 12 #:color "red")))
+               (list (points blocked #:size 12 #:line-width 12 #:color "red")))
            ;Graph player 1 pieces
            (pieces P1p p1-color)
            ;Graph player 2 pieces
@@ -241,15 +251,30 @@
                                    (not (equal?(P-player p)
                                                (P-player p2))))
                                  (other-p p)))])
-    (for/list ([p pieces])
-      (for/list ([ap (attack-p p)])
-        (let* ([pdist (distance (P-reach p) (P-pos p) (G-dem g) (G-block g))]
-               [appos (P-pos ap)]
-               [pdistap (filter (λ(p)(not(equal? appos (first p)))) pdist)])
-          (if (empty? pdistap)
-              empty
-              (let* ([minhor (second (first pdistap))]
-                     [u (U p ap minhor)])
-                (graph-zone g u))))))))
+    (filter notempty?
+            (flatten
+             (for/list ([p pieces])
+               (let* ([pdist (distance (P-reach p) (P-pos p) (G-dem g) (G-block g))]
+                      ;;Special case, pawns attack end of board
+                      [x (first (G-dem g))]
+                      [y (second (G-dem g))]
+                      [apieces (if (member (P-reach p) (list Pawn PawnB PawnW))
+                                   (foldl (λ(x acc)(cons (P empty empty (list x 1))
+                                                         (cons (P empty empty (list x y))
+                                                               acc)))
+                                          (attack-p p) (range 1 (+ 1 x)))
+                                   (attack-p p))])
+                 (for/list ([ap apieces])
+                   (let* ([appos (P-pos ap)]
+                          [pdistap (filter (λ(p) (equal? appos (first p))) pdist)])
+                     (if (empty? pdistap)
+                         empty
+                         (let* ([minhor (second (first pdistap))]
+                                [ap (P (P-reach p) (P-player p) (P-pos ap))]
+                                [u (U p ap minhor)])
+                           (begin
+                             ;(println (list (P-reach p) (P-pos p) (P-pos ap) minhor))
+                             (graph-zone g u)
+                             )))))))))))
   
 ;;;;;;;End modify                                              ;;;;;;;;;;
