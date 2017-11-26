@@ -201,10 +201,16 @@
 ;;>(graph-zone pdf8 (U (P (Pawnp B) B '(8 5)) (P (Pawnp B) B '(8 1)) 4))
 ;;>(graph-zone reti (U (P (Pawnp W) 1 '(3 6)) (P (Pawnp W) 1 '(3 8)) 2))
 ;;>(graph-zone reti (U (P King B '(1 6)) (P King B '(3 8)) 2))
-#|>(graph-zone (G (list (P King B '(2 7))(P Knight B '(7 7))(P Pawn B '(5 5))
-                        (P King W '(2 1))(P Bishop W '(6 2))(P Pawn W '(3 3))(P Pawn W '(4 5))) '(8 8) empty)
-               (U (P Bishop W '(6 2))(P Bishop W '(5 5)) 2)
-               '((6 2)(4 4)(5 5)))
+#|>Assignment 5-11
+(graph-zone (G (list (P King B '(2 7))(P Knight B '(7 7))(P Pawn B '(5 5))
+                     (P King W '(2 1))(P Bishop W '(6 2))(P Pawn W '(3 3))(P Pawn W '(4 5))) '(8 8) empty)
+            (U (P Bishop W '(6 2))(P Bishop W '(5 5)) 2)
+            '((6 2)(4 4)(5 5)))
+|##|Assignment 5-12
+(zone (G (list (P King W '(8 8))(P Pawn W '(3 6))
+               (P King B '(1 6))(P Pawn B '(8 5)))
+       '(8 8)
+       empty))
 |#
 ;TODO: Print pieces
 (define graph-zone
