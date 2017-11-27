@@ -11,16 +11,49 @@
                       '(8 8)
                       (list empty))))
 
+
+
+;Move a piece along a trajectory
+(define (move-t p t)
+  (if (< (length t) 2)
+      (error (string-append "Trajectory given to move-t doesn't have moves"
+                            (~a t)))
+      (if (not (equal? (P-pos p) (first t)))
+          (error "move-t given a t for a different p?")
+          (P (P-reach p) (P-player p) (second t)))))
+
+;Given a zt return the new piece
+(define (movezt zt)
+  (let* ([p (first zt)]
+         [tra (second zt)]
+         [h (third zt)])
+    (move-t p tra)))
+
+;Apply a t object from a zone
+(define (applyzt g zt)
+  (let* ([p (first zt)]
+         [g-ps (remove p (G-Ps g))]
+         [p2 (movezt zt)])
+    (G (cons p2 g-ps) (G-dem g) (G-block g))))
+
+;Given a list of zones, give back only those that include a player
+(define (zones-with player zones)
+  (define (is-player? zt)
+    (equal? player (P-player (first zt))))
+  (define (has-player? z)
+    (ormap is-player? z))
+  (filter has-player? zones))
+    
+    
+
 (define (first-move g)
   (let* ([zones (zone reti #:graph #f)]
-         [maint (first (first zones))]
-         [mainp (first maint)]
-         [maintra (second maint)]
-         [g-ps (remove mainp (G-Ps g))]
-         [maint-fm (second maintra)]
-         [mainpm (P (P-reach mainp) (P-player mainp) maint-fm)]
-         [g2 (G (cons mainpm g-ps) (G-dem g) (G-block g))])
-    (zone g2)))
+         [mainzone (first zones)]
+         [mainz (first mainzone)]
+         [g2 (applyzt g mainz)])
+    (list (graph-game g)
+          (graph-game g2))))
+    ;(zone g2)))
 
 (define (graph-game g)
   (let* ([p1-color "blue"]
@@ -35,7 +68,6 @@
          [m1 (λ (p) (for/list ([r (r1 p)]) (list (P-pos p) (first r))))]
          [P1pr (map m1 P1p)]
          [P2pr (map m1 P2p)])
-    (println P1pr)
     (plot (append*
            (make-board (G-dem g))
            ;Graph blocked spaces
@@ -46,14 +78,14 @@
            (pieces P1p p1-color)
            ;Graph player 2 pieces
            (pieces P2p p2-color)
-           (if (> (length P1pr) 0)
-             (list (lines P1pr #:width 3 #:alpha 0.5 #:color p1-color))
-             empty)
-           (if (> (length P2pr) 0)
-             (list (lines P2pr #:width 3 #:alpha 0.5 #:color p2-color))
-             empty)
+           (for/list ([p P1pr])
+             (for/list ([tra p])
+                   (lines tra #:width 3 #:alpha 0.5 #:color p1-color)))
+           (for/list ([p P2pr])
+             (for/list ([tra p])
+                   (lines tra #:width 3 #:alpha 0.5 #:color p2-color))))
           #:width g-board-size
           #:height g-board-size
           ;#:title "Game"
           #:x-label #f
-          #:y-label #f))))
+          #:y-label #f)))

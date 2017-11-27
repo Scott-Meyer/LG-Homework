@@ -151,10 +151,11 @@
              [v (map (λ (p) (list p 1)) (tail tra))]
              [time (for/list ([i (range 2 (+ 1 (length tra)))]
                               [p (tail tra)])
-                     (list p i))])
+                     (list p i))]
+             [g2 (G (remove (U-Pi u) (G-Ps g)) (G-dem g) (G-block g))])
         (cons
          (list (U-Pi u) tra (- (length tra) 1))
-         (Z3 g u v w time next-time))) ;three
+         (Z3 g2 u v w time next-time))) ;three
       empty))
 
 ;Zone3
