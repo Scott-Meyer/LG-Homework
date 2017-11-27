@@ -41,7 +41,7 @@ lets do Assignment 5 problem 11. (this has a forced main trajectory)
              (U (P Bishop W '(6 2))(P Bishop W '(5 5)) 2)
              '((6 2)(4 4)(5 5)))
 ```
-![Queen](https://i.imgur.com/asQFdwv.png)
+![Queen](https://i.imgur.com/bRRU5Tp.png)
 ## All Attack Zones
 
 All attack zones is a little easier, it just requires a Game object

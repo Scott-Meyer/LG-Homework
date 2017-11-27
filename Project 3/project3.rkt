@@ -2,7 +2,12 @@
 (require "main.rkt")
 (require "project2.rkt")
 (require plot)
-(provide P U G T Fix fixG)
+;(provide P U G T Fix fixG zone graph-zone)
+(provide (all-defined-out))
+
+
+;Size to graph board ass
+(define g-board-size 230)
 
 ;Pieces have a reachability function, a player, and a position
 (struct P (reach player pos))
@@ -81,7 +86,7 @@
 (define (pawnify-time g p time)
   (define (pawny t)
     (let* ([t-pos (first t)]
-           [t-y (first t-pos)])
+           [t-y (second t-pos)])
       (if (equal? (P-reach p) PawnW)
           (- t-y 1)
           (+ t-y 1))))
@@ -159,7 +164,7 @@
       (not (empty? (G-Ps g))))
     (if Q3
         (if (member (P-pos (first (G-Ps g))) (map first time))
-            (Z3 (tailG g) u v w time next-time)
+            (Z3 (tailG g) u v w time next-time not-connected)
             (Z4 g u v w time next-time not-connected))
         (Z5 g u v w time next-time not-connected)))) ;five
 
@@ -176,9 +181,10 @@
                [time-p (pawnify-time g p time)] ;if not pawn, return time, otherwise pawn-time
                ;Get trajectories that link from p to points on time
                [tras (foldl (λ (t acc)
-                              ; TEST Max hor (println (list (if (is-mp? p) 1 (second t)) (P-reach p) (P-pos p) (first t) (G-dem g) (G-block g)))
+                              ;test print (println (list (if (is-mp? p) 1 (second t)) (P-reach p) (P-pos p) (first t) (G-dem g) (G-block g)))
                               (let* (;cur-time is based on the 2nd value of each time (t) for opposite player
-                                     [cur-time (if (is-mp? p) 1 (second t))]
+                                     [same-time (if (ispawn? p) 0 1)]
+                                     [cur-time (if (is-mp? p) same-time (second t))]
                                      [t-pos (first t)]
                                      ;Get trajectories from each piece to each spot on time (t)
                                      [tra (max-horizon cur-time      ;max horizon based on time
@@ -208,7 +214,6 @@
                                                  [nt-pts (if (empty? next-time) next-time (map first next-time))]
                                                  [ispos? (λ (pt pos) (equal? (first pt) pos))])
                                             (begin
-                                              (println tra2)
                                               (set! w (foldl (λ (p acc) (if (member p w-pts)
                                                                             acc
                                                                             (cons (list p 1) acc))) w (tail tra2)))
@@ -221,7 +226,7 @@
                                     acc)))
 ;new pawn case |#                           empty time)])  
                             empty (if (ispawn? p) time-p time))])
-                            (if (not (empty? tras))
+          (if (not (empty? tras))
               (append
                (foldl (λ (t acc) (cons
                                   (list p t (- (length t) 1))
@@ -271,7 +276,7 @@
 |#
 ;TODO: Print pieces
 (define graph-zone
-  (λ (g u [f-main empty])
+  (λ (g u [f-main empty] #:graph [graph #t])
   (let* ([p1-color "blue"]
          [p2-color "black"]
          [blocked (G-block g)]
@@ -291,84 +296,90 @@
 
     ;(for/list ([t z])
     ;  (write-string (string-join (list "t(" (~a (P-reach (first t))) "," (~a (second t)) "," (~a (third t)) ")\n"))))
-    (plot (append*
-           (make-board (G-dem g))
-           ;Graph blocked spaces
-           (if (empty? (flatten blocked))
-               empty
-               (list (points blocked #:size 12 #:line-width 12 #:color "red")))
-           ;Graph player 1 pieces
-           (pieces P1p p1-color)
-           ;Graph player 2 pieces
-           (pieces P2p p2-color)
-           (if (> (length z) 0)
-               (list
-                ;make main traj look different
-                (let* ([t (first z)]
-                       [color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
-                       [tra (second t)])
-                  (cons
-                   (points tra #:size 1 #:line-width 11 #:alpha 0.8 #:color color)
-                   (list (lines tra #:width 3 #:alpha 0.5 #:color color))))
-                ;Map the zone
-                (for/list ([t (tail z)])
-                  (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
-                        [tra (second t)])
-                    (cons
-                     (points tra #:size 1 #:line-width 10 #:alpha 0.5 #:color color)
-                     (list (lines tra #:width 3 #:alpha 0.25 #:color color))))))
-               empty))
-          #:width 250
-          #:height 250
-          #:title (string-append "Zone: "
-                                 (~a (P-reach (first (first z))))
-                                 (~a (first (second (first z))))
-                                 (~a (last (second (first z))))
-                                 "\n")
-          #:x-label #f
-          #:y-label #f))))
+    (if graph
+        (plot (append*
+               (make-board (G-dem g))
+               ;Graph blocked spaces
+               (if (empty? (flatten blocked))
+                   empty
+                   (list (points blocked #:size 12 #:line-width 12 #:color "red")))
+               ;Graph player 1 pieces
+               (pieces P1p p1-color)
+               ;Graph player 2 pieces
+               (pieces P2p p2-color)
+               (if (> (length z) 0)
+                   (list
+                    ;make main traj look different
+                    (let* ([t (first z)]
+                           [color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
+                           [tra (second t)])
+                      (cons
+                       (points tra #:size 1 #:line-width 11 #:alpha 0.8 #:color color)
+                       (list (lines tra #:width 3 #:alpha 0.5 #:color color))))
+                    ;Map the zone
+                    (for/list ([t (tail z)])
+                      (let ([color (if (equal? (P-player (first t)) 1) p1-color p2-color)]
+                            [tra (second t)])
+                        (cons
+                         (points tra #:size 1 #:line-width 10 #:alpha 0.5 #:color color)
+                         (list (lines tra #:width 3 #:alpha 0.25 #:color color))))))
+                   empty))
+              #:width g-board-size
+              #:height g-board-size
+              #:title (string-append "Zone: "
+                                     (~a (P-reach (first (first z))))
+                                     (~a (first (second (first z))))
+                                     (~a (last (second (first z))))
+                                     "\n")
+              #:x-label #f
+              #:y-label #f)
+        z))))
 ;;;;;;;END GRAPHING/DISPLAYING;;;;;;;
 
 
 ;;;;;;;Modify zone, to run for all attack                      ;;;;;;;;;;
 ;;>(zone reti)
-(define (zone g)
-  (let* ([g (fixG g)]
-         [pieces (G-Ps g)]
-         ;pieces other than given piece
-         [other-p (λ(p) (filter (λ(p2)
-                                  (not (equal?(P-pos p)
-                                              (P-pos p2))))
-                                pieces))]
-         ;attackable pieces
-         [attack-p (λ(p) (filter (λ(p2)
-                                   (not (equal?(P-player p)
-                                               (P-player p2))))
-                                 (other-p p)))])
-    (filter notempty?
-            (flatten
-             (for/list ([p pieces])
-               (let* ([pdist (distance (P-reach p) (P-pos p) (G-dem g) (G-block g))]
-                      ;;Special case, pawns attack end of board
-                      [x (first (G-dem g))]
-                      [y (second (G-dem g))]
-                      [apieces (if (member (P-reach p) (list Pawn PawnB PawnW))
-                                   (foldl (λ(x acc)(cons (P empty empty (list x 1))
-                                                         (cons (P empty empty (list x y))
-                                                               acc)))
-                                          (attack-p p) (range 1 (+ 1 x)))
-                                   (attack-p p))])
-                 (for/list ([ap apieces])
-                   (let* ([appos (P-pos ap)]
-                          [pdistap (filter (λ(p) (equal? appos (first p))) pdist)])
-                     (if (empty? pdistap)
-                         empty
-                         (let* ([minhor (second (first pdistap))]
-                                [ap (P (P-reach p) (P-player p) (P-pos ap))]
-                                [u (U p ap minhor)])
-                           (begin
-                             ;(println (list (P-reach p) (P-pos p) (P-pos ap) minhor))
-                             (graph-zone g u)
-                             )))))))))))
+(define zone
+  (λ (g #:graph [graph #t])
+    (let* ([g (fixG g)]
+           [pieces (G-Ps g)]
+           ;pieces other than given piece
+           [other-p (λ(p) (filter (λ(p2)
+                                    (not (equal?(P-pos p)
+                                                (P-pos p2))))
+                                  pieces))]
+           ;attackable pieces
+           [attack-p (λ(p) (filter (λ(p2)
+                                     (not (equal?(P-player p)
+                                                 (P-player p2))))
+                                   (other-p p)))]
+           [g-z (for/list ([p pieces])
+                  (let* ([pdist (distance (P-reach p) (P-pos p) (G-dem g) (G-block g))]
+                         ;;Special case, pawns attack end of board
+                         [x (first (G-dem g))]
+                         [y (second (G-dem g))]
+                         [apieces (if (member (P-reach p) (list Pawn PawnB PawnW))
+                                      (foldl (λ(x acc)(cons (P empty empty (list x 1))
+                                                            (cons (P empty empty (list x y))
+                                                                  acc)))
+                                             (attack-p p) (range 1 (+ 1 x)))
+                                      (attack-p p))])
+                    (filter notempty?
+                                     (for/list ([ap apieces])
+                                       (let* ([appos (P-pos ap)]
+                                              [pdistap (filter (λ(p) (equal? appos (first p))) pdist)])
+                                         (if (empty? pdistap)
+                                             empty
+                                             (let* ([minhor (second (first pdistap))]
+                                                    [ap (P (P-reach p) (P-player p) (P-pos ap))]
+                                                    [u (U p ap minhor)])
+                                               (begin
+                                                 ;(println (list (P-reach p) (P-pos p) (P-pos ap) minhor))
+                                                 (graph-zone g u #:graph graph)
+                                                 ))))))))])
+            (if graph
+                (filter notempty?
+                        (flatten g-z))
+                (append* g-z)))))
   
 ;;;;;;;End modify                                              ;;;;;;;;;;
