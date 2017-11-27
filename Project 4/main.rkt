@@ -4,8 +4,10 @@
 ;(println "Hello")
 ;(define a (read-string (current-input-port) 'any))
 ;(println a)
-(provide distance Queen Rook Knight King Pawn Pawnp PawnB PawnW Bishop White Black W B)
+(provide distance Queen Rook Knight King Pawn Pawnp PawnB PawnW Bishop White Black W B other-player)
 
+(define (other-player p)
+  (if (equal? p 1) 2 1))
 (define White 1)
 (define W 1)
 (define Black 2)

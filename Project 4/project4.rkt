@@ -43,8 +43,30 @@
   (define (has-player? z)
     (ormap is-player? z))
   (filter has-player? zones))
-    
-    
+
+;given a zone, return only the t objects with a player
+(define (zones-player player zones)
+  (define (is-player? zt)
+    (equal? player (P-player (first zt))))
+  (define (has-player? z)
+    (filter is-player? z))
+  (filter notempty? (map has-player? zones)))
+
+;All possible games for one player's possible moves
+(define (player-move-games g p)
+  ;stuff
+  empty)
+
+;Play game
+(define (play-game g fp)
+  (let* ([zones (zone g #:graph #f)]
+         [withmoves (zones-player fp zones)]
+         [sp (other-player fp)]
+         [mains (first (zones-player sp (zones-with sp zones)))])
+    (if (> (length withmoves) 0)
+        (map graph-game
+             (map (λ(z) (applyzt g z)) (map first withmoves)))
+        empty)))
 
 (define (first-move g)
   (let* ([zones (zone reti #:graph #f)]
@@ -55,6 +77,7 @@
           (graph-game g2))))
     ;(zone g2)))
 
+;Graph a game
 (define (graph-game g)
   (let* ([p1-color "blue"]
          [p2-color "black"]
