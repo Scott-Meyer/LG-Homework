@@ -4,7 +4,7 @@
 ;(println "Hello")
 ;(define a (read-string (current-input-port) 'any))
 ;(println a)
-(provide distance Queen Rook Knight King Pawn Pawnp PawnB PawnW Bishop White Black W B)
+(provide distance Queen Rook Knight King Pawn Pawnp PawnB PawnW Bishop White Black W B FastKing AwesomeQueen LongKnight mobileKnight)
 
 (define White 1)
 (define W 1)
@@ -50,6 +50,20 @@
       PawnW
       PawnB))
 (define (Queen xc yc p) (or (Rook xc yc p) (Bishop xc yc p)))
+
+;;;Non standard chess peices
+(define (AwesomeQueen xc yc p) (or (Rook xc yc p) (Bishop xc yc p) (Knight xc yc p)))
+(define (FastKing xc yc p)
+  (if (and (equal? xc 0) equal? yc 0)
+      #t
+      (and
+       (and (<= (abs xc) 2) (<= (abs yc) 2))
+       (not (member (list (+ (first p) xc) (+ (second p) yc)) blocked))
+       (FastKing (movement xc) (movement yc) p))))
+(define (LongKnight xc yc p)
+  (or (and (equal? 3 (abs xc)) (equal? 2 (abs yc))) (and (equal? 2 (abs xc)) (equal? 3 (abs yc)))))
+(define (mobileKnight xc yc p)
+  (or (Knight xc yc p) (LongKnight xc yc p)))
 
 (define (reachable? reachability p1 p2)
   (let* ([x1 (first p1)]

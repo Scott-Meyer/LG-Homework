@@ -1,7 +1,7 @@
 # Readme
 
 # IMPORTANT
-I havn't done non-chess peices yet, so there are no built in non-chess peices and you can't do custom ones.
+~~I havn't done non-chess peices yet, so there are no built in non-chess peices and you can't do custom ones.~~
 
 Also, I havn't created a re-distributable exe with a menu/options. 
 
@@ -17,6 +17,18 @@ TODO: Optimize anything
 5. Enter functions into the REPL (interperter) at the bottom of the window. Find function examples further down in this readme
 
 # Running code
+
+Options for peices are:
+1.  King
+2.  Queen
+3.  Bishop
+4.  Knight
+5.  Pawn, PawnB, PawnW
+6.  Rook
+7.  FastKing (Can move like the chess king, but twice as fast)
+8.  SuperQueen (Can move like a chess queen, but also like a chess knight)
+9.  LongKnight (Can move like a chess Knight, except instead of 2 + 1, its 3 + 2)
+10. mobileKnight (Can move like a chess Knight, and a LongKnight)
 
 ## Graphs
 You have to run the "graph" function
