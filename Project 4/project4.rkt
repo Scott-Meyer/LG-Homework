@@ -6,6 +6,8 @@
 (provide (all-defined-out))
 (require math/array)
 
+
+
 ;Reti endgame
 (define reti (fixG (G (list (P Pawn W '(3 6))(P King W '(8 8))
                             (P Pawn B '(8 5))(P King B '(1 6)))
@@ -72,6 +74,24 @@
   (cond
     [(empty? (node-children node)) (println (list (move-p1 (node-move node)) (move-p2 (node-move node))))]
     [else (map print-tree (node-children node))]))
+
+
+;;;Depth first traversal of tree, to get ordered list of moves.
+(define (moves2 n)
+  (if (empty? (node-children n))
+      (node-move n)
+      (cons
+       (node-move n)
+       (flatten (map moves2 (node-children n))))))
+(define moves
+  (let* ([head pdf18p10]
+         [hc (node-children head)])
+    (append* (map moves2 hc))))
+(define moves-global moves)
+(define dmoves-global empty)
+
+(define (print-move m)
+  (print (list (move-player m) (move-p1 m) (move-p2 m))))
 
 
 ;Move a piece along a trajectory
@@ -190,6 +210,14 @@
       (list-set! (append ls (list 0)) k val)
       (list-set2! ls k val)))
 
+;;in the "moves" list, positions on the board are given in the form, a2. We need the form (list 1 2)
+(define (convert-move m)
+  (let* ([x (string-ref m 0)]
+         [y (string-ref m 1)])
+    (list (- (char->integer x) 96)
+          (- (char->integer y) 48))))
+  
+
 ;;;;----useful state functions
 ;Ever node has a parent, child sibling.
 (struct snode (p c s))
@@ -214,10 +242,41 @@
   (if (equal? a  BIG_NUMBER)
       b
       a))
-(define (Parent i fvar)
+(define (parent i fvar)
   (list-ref (state-parent fvar) i))
 (define (TRANSITION-1 fvar)
-  (state-board fvar)) ;TODO: This
+  (let* ([ps (G-Ps (state-board fvar))]
+         [cmove (last dmoves-global)]
+         [p# (- (length ps)
+                (length (member (convert-move (move-p2 cmove))
+                                (map P-pos ps))))]
+         [cp (list-ref ps p#)]
+         [nps (list-set! ps p# (P (P-reach cp) (P-player cp) (convert-move (move-p1 cmove))))])
+    (begin
+     (set! dmoves-global (remove (last dmoves-global) dmoves-global equal?))
+     (struct-copy G (state-board fvar) [Ps nps]))))
+(define (TRANSITION fvar)
+  (let* ([ps (G-Ps (state-board fvar))]
+         [cmove (first moves-global)]
+         [p# (- (length ps)
+                (length (member (convert-move (move-p1 cmove))
+                                (map P-pos ps))))]
+         [cp (list-ref ps p#)]
+         [nps (list-set! ps p# (P (P-reach cp) (P-player cp) (convert-move (move-p2 cmove))))])
+    (begin
+     (set! dmoves-global (append dmoves-global (head moves-global)))
+     (set! moves-global (tail moves-global))
+     (struct-copy G (state-board fvar) [Ps nps]))))
+(define (MINIMAX SN v1 v2)
+  (if (equal? 1 SN)
+      (max v1 v2)
+      (min v1 v2)))
+(define (CUT fvar)
+  (let* ([ps (G-Ps (state-board fvar))]
+         [p-pos (map P-pos ps)])
+  (if (check-duplicates p-pos)
+      #f
+      #t)))
 ;;;; Global State
 ;;;;-------GRS--------
 (define (Grs1 i)
@@ -241,25 +300,33 @@
 
 (define (Grs2 i fvar)
   (define Q2
-    #t)
+    (and
+     (or
+      (equal? (state-sign fvar) (move-player (first moves-global)))
+      (and
+       (equal? (state-sign fvar) -1)
+       (equal? (move-player (first moves-global)) 2)))
+     (< (state-d fvar) 20)
+     (CUT fvar)))
   (if Q2
       ;if q2, do Grs2
       (let* ([np (list-set! (state-parent fvar) (state-end fvar) i)]
-             [nzc (not (zero? (list-ref (state-child) i)))]
+             [nzc (not (zero? (list-ref (state-child fvar) i)))]
              [ns (if nzc
                      (list-set! (state-sibling fvar)
                                 (list-ref (state-child fvar) i)
                                 (state-end fvar))
                      (list-set! (state-sibling fvar) i 0))]
              [nc (if nzc
-                     (state-child fvar)
+                     ;need to add a case here it initialize
+                     (list-set! (state-child fvar) i 0)
                      (list-set! (state-child fvar) i (state-end fvar)))]
-             [nboard]
-             [nm]
+             [nboard (TRANSITION fvar)]
+             [nm (list-set! (state-m fvar) (state-end fvar) 0)]
              [nv (list-set! (state-v fvar) (state-end fvar) (* BIG_NUMBER (state-sign fvar)))]
-             [nwho]
-             [nfrom]
-             [nto]
+             [nwho (list-set! (state-who fvar) (state-end fvar) 0)]
+             [nfrom (list-set! (state-from fvar) (state-end fvar) 0)]
+             [nto (list-set! (state-to fvar) (state-end fvar) 0)]
              [nstate (struct-copy state fvar
                                   [parent np]
                                   [child nc]
@@ -275,7 +342,7 @@
                                   [to nto])])
         (let*-values ([(pis cstate) (Grs2 (state-end fvar) nstate)]
                       [(pis2 cstate2) (Grs2 i cstate)])
-          (values (append pis (list (state-end fvar)) pis2) cstate2))
+          (values (append pis (list (state-end fvar)) pis2) cstate2)))
       ;else do Grs3
       (Grs3 i fvar)))
                
@@ -283,7 +350,7 @@
 (define (Grs3 i fvar)
   (define Q3
     #t)
-  (let* ([dzero? (not (zero? (state-d fvar)))]
+  (let* ([dnzero? (not (zero? (state-d fvar)))]
          [nd (if dnzero?
                  (- (state-d fvar) 1)
                  (state-d fvar))]
