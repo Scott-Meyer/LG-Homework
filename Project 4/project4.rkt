@@ -4,7 +4,7 @@
 (require "project3.rkt")
 (require plot)
 (provide (all-defined-out))
-(require math/array)	
+(require math/array)
 
 ;Reti endgame
 (define reti (fixG (G (list (P Pawn W '(3 6))(P King W '(8 8))
@@ -90,6 +90,10 @@
          [h (third zt)])
     (move-t p tra)))
 
+;know other player
+(define (other-player p)
+  (if (zero? p) 1 0))
+
 ;Apply a t object from a zone
 (define (applyzt g zt)
   (let* ([p (first zt)]
@@ -174,10 +178,25 @@
           #:x-label #f
           #:y-label #f)))
 
+;given a list, change value at position k to val
+(define (list-set! ls k val)
+  (define (list-set2! ls k val)
+    (if (zero? k)
+        (cons val (cdr ls))
+        (cons (car ls) (list-set! (cdr ls) (- k 1) val))))
+        
+  ;;;Specific to our problem. If position k doens't exist, initialize it to 0
+  (if (> (+ k 1) (length ls))
+      (list-set! (append ls (list 0)) k val)
+      (list-set2! ls k val)))
 
 ;;;;----useful state functions
-(struct state (i end d m v from to child sibling parent who sign board))
+;Ever node has a parent, child sibling.
+(struct snode (p c s))
+
+(struct state (end d m v from to parent child sibling who sign board))
 ;(struct-copy state cstate [i 10])
+; to change one thing in a struct, (struct-copy `struct name` `struct instance` [`thing` `new value`])
 
 
 ;;;;-------Grammar functions------
@@ -191,33 +210,104 @@
          [b-pieces (filter (filter-for B) pieces)])
     (- (length w-pieces)
        (length b-pieces))))
-
+(define (LEAF a b)
+  (if (equal? a  BIG_NUMBER)
+      b
+      a))
+(define (Parent i fvar)
+  (list-ref (state-parent fvar) i))
+(define (TRANSITION-1 fvar)
+  (state-board fvar)) ;TODO: This
+;;;; Global State
 ;;;;-------GRS--------
 (define (Grs1 i)
   (define Q1
     #t)
-  (let ([start-state (state 0
-                             1
-                             0
-                             (list (m reti))
-                             (list BIG_NUMBER)
-                             (list from?)
-                             (list to?)
-                             (list 0)
-                             (list 0)
-                             (list 0)
-                             (list who?)
-                             1
-                             reti)])
-    start-state))
+  (let ([start-state (state 
+                      1 ;end
+                      0 ;d
+                      (list (m reti)) ;m
+                      (list BIG_NUMBER) ;v
+                      (list 0) ;from
+                      (list 0) ;to
+                      (list 0) ;parent
+                      (list 0) ;child
+                      (list 0) ;sibling
+                      (list 0) ;who
+                      1 ;sign
+                      reti)]) ;board ;game
+    (Grs2 0 start-state)))
     
 
 (define (Grs2 i fvar)
   (define Q2
     #t)
-  "stuff")
+  (if Q2
+      ;if q2, do Grs2
+      (let* ([np (list-set! (state-parent fvar) (state-end fvar) i)]
+             [nzc (not (zero? (list-ref (state-child) i)))]
+             [ns (if nzc
+                     (list-set! (state-sibling fvar)
+                                (list-ref (state-child fvar) i)
+                                (state-end fvar))
+                     (list-set! (state-sibling fvar) i 0))]
+             [nc (if nzc
+                     (state-child fvar)
+                     (list-set! (state-child fvar) i (state-end fvar)))]
+             [nboard]
+             [nm]
+             [nv (list-set! (state-v fvar) (state-end fvar) (* BIG_NUMBER (state-sign fvar)))]
+             [nwho]
+             [nfrom]
+             [nto]
+             [nstate (struct-copy state fvar
+                                  [parent np]
+                                  [child nc]
+                                  [sibling ns]
+                                  [end (+ (state-end fvar) 1)]
+                                  [d (+ (state-d fvar) 1)]
+                                  [sign (- (state-sign fvar))]
+                                  [board nboard]
+                                  [m nm]
+                                  [v nv]
+                                  [who nwho]
+                                  [from nfrom]
+                                  [to nto])])
+        (let*-values ([(pis cstate) (Grs2 (state-end fvar) nstate)]
+                      [(pis2 cstate2) (Grs2 i cstate)])
+          (values (append pis (list (state-end fvar)) pis2) cstate2))
+      ;else do Grs3
+      (Grs3 i fvar)))
+               
 
 (define (Grs3 i fvar)
   (define Q3
     #t)
-  "stuff")
+  (let* ([dzero? (not (zero? (state-d fvar)))]
+         [nd (if dnzero?
+                 (- (state-d fvar) 1)
+                 (state-d fvar))]
+         [nsign (if dnzero?
+                    (- (state-sign fvar))
+                    (state-sign fvar))]
+         [pi (parent i fvar)]
+         [vs (state-v fvar)]
+         [ms (state-m fvar)]
+         [leafvmi (LEAF (list-ref vs i)
+                        (list-ref ms i))]
+         [pnv (list-set! vs ;list of v
+                         pi ;specfici v we are chaning
+                         ;new value
+                         (MINIMAX (state-sign fvar)
+                                  (list-ref vs pi)
+                                  leafvmi))]
+         [nv (list-set! pnv i leafvmi)]
+         [nboard (TRANSITION-1 fvar)])
+    ;return that there is no pi for this, and updated state
+    (values empty
+            (struct-copy state fvar
+                         [d nd]
+                         [sign nsign]
+                         [v nv]
+                         [board nboard]))))
+ 
