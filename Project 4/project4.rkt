@@ -226,6 +226,19 @@
 ;(struct-copy state cstate [i 10])
 ; to change one thing in a struct, (struct-copy `struct name` `struct instance` [`thing` `new value`])
 
+(define (print-state fvar)
+  (println (list
+            "end" (state-end fvar)
+            "d" (state-d fvar)
+            "m" (state-m fvar)
+            "v" (state-v fvar)
+            "from" (state-from fvar)
+            "to" (state-to fvar)
+            "parent" (state-parent fvar)
+            "child" (state-child fvar)
+            "sibling" (state-sibling fvar)
+            "who" (state-who fvar)
+            "sign" (state-sign fvar))))
 
 ;;;;-------Grammar functions------
 (define BIG_NUMBER 999999)
@@ -254,6 +267,7 @@
          [nps (list-set! ps p# (P (P-reach cp) (P-player cp) (convert-move (move-p1 cmove))))])
     (begin
      (set! dmoves-global (remove (last dmoves-global) dmoves-global equal?))
+     ;(println (graph-game (struct-copy G (state-board fvar) [Ps nps])))
      (struct-copy G (state-board fvar) [Ps nps]))))
 (define (TRANSITION fvar)
   (let* ([ps (G-Ps (state-board fvar))]
@@ -264,7 +278,8 @@
          [cp (list-ref ps p#)]
          [nps (list-set! ps p# (P (P-reach cp) (P-player cp) (convert-move (move-p2 cmove))))])
     (begin
-     (set! dmoves-global (append dmoves-global (head moves-global)))
+      ;FIX: make the single move a list of one.
+     (set! dmoves-global (append dmoves-global (list (head moves-global))))
      (set! moves-global (tail moves-global))
      (struct-copy G (state-board fvar) [Ps nps]))))
 (define (MINIMAX SN v1 v2)
@@ -274,9 +289,11 @@
 (define (CUT fvar)
   (let* ([ps (G-Ps (state-board fvar))]
          [p-pos (map P-pos ps)])
-  (if (check-duplicates p-pos)
-      #f
-      #t)))
+  (and
+   (member (convert-move (move-p1 (head moves-global))) (map P-pos (G-Ps (state-board fvar))))
+   (if (check-duplicates p-pos)
+       #f
+       #t))))
 ;;;; Global State
 ;;;;-------GRS--------
 (define (Grs1 i)
@@ -311,15 +328,18 @@
   (if Q2
       ;if q2, do Grs2
       (let* ([np (list-set! (state-parent fvar) (state-end fvar) i)]
-             [nzc (not (zero? (list-ref (state-child fvar) i)))]
+             ;FIX: problems here due to non initialized, check if child(i) exists.
+             [nzc (if (>= (length (state-child fvar)) (+ i 1))
+                      (not (zero? (list-ref (state-child fvar) i)))
+                      #f)]
              [ns (if nzc
                      (list-set! (state-sibling fvar)
                                 (list-ref (state-child fvar) i)
                                 (state-end fvar))
                      (list-set! (state-sibling fvar) i 0))]
              [nc (if nzc
-                     ;need to add a case here it initialize
-                     (list-set! (state-child fvar) i 0)
+                     ;FIX: need to add a case here it initialize
+                     ;(list-set! (state-child fvar) i 0)
                      (list-set! (state-child fvar) i (state-end fvar)))]
              [nboard (TRANSITION fvar)]
              [nm (list-set! (state-m fvar) (state-end fvar) 0)]
@@ -340,9 +360,13 @@
                                   [who nwho]
                                   [from nfrom]
                                   [to nto])])
-        (let*-values ([(pis cstate) (Grs2 (state-end fvar) nstate)]
-                      [(pis2 cstate2) (Grs2 i cstate)])
-          (values (append pis (list (state-end fvar)) pis2) cstate2)))
+        (begin
+         (println (string-append "Grammar 2 with: i=" (number->string i)))
+         (print-state fvar)
+         (println (graph-game (state-board fvar)))
+         (let*-values ([(pis cstate) (Grs2 (state-end fvar) nstate)]
+                       [(pis2 cstate2) (Grs2 i cstate)])
+           (values (append pis (list (state-end fvar)) pis2) cstate2))))
       ;else do Grs3
       (Grs3 i fvar)))
                
@@ -350,31 +374,35 @@
 (define (Grs3 i fvar)
   (define Q3
     #t)
-  (let* ([dnzero? (not (zero? (state-d fvar)))]
-         [nd (if dnzero?
-                 (- (state-d fvar) 1)
-                 (state-d fvar))]
-         [nsign (if dnzero?
-                    (- (state-sign fvar))
-                    (state-sign fvar))]
-         [pi (parent i fvar)]
-         [vs (state-v fvar)]
-         [ms (state-m fvar)]
-         [leafvmi (LEAF (list-ref vs i)
-                        (list-ref ms i))]
-         [pnv (list-set! vs ;list of v
-                         pi ;specfici v we are chaning
-                         ;new value
-                         (MINIMAX (state-sign fvar)
-                                  (list-ref vs pi)
-                                  leafvmi))]
-         [nv (list-set! pnv i leafvmi)]
-         [nboard (TRANSITION-1 fvar)])
-    ;return that there is no pi for this, and updated state
-    (values empty
-            (struct-copy state fvar
-                         [d nd]
-                         [sign nsign]
-                         [v nv]
-                         [board nboard]))))
+  (begin
+    (println (string-append "Grammar 3 with: i=" (number->string i)))
+    (print-state fvar)
+    (println (graph-game (state-board fvar)))
+    (let* ([dnzero? (not (zero? (state-d fvar)))]
+           [nd (if dnzero?
+                   (- (state-d fvar) 1)
+                   (state-d fvar))]
+           [nsign (if dnzero?
+                      (- (state-sign fvar))
+                      (state-sign fvar))]
+           [pi (parent i fvar)]
+           [vs (state-v fvar)]
+           [ms (state-m fvar)]
+           [leafvmi (LEAF (list-ref vs i)
+                          (list-ref ms i))]
+           [pnv (list-set! vs ;list of v
+                           pi ;specfici v we are chaning
+                           ;new value
+                           (MINIMAX (state-sign fvar)
+                                    (list-ref vs pi)
+                                    leafvmi))]
+           [nv (list-set! pnv i leafvmi)]
+           [nboard (TRANSITION-1 fvar)])
+      ;return that there is no pi for this, and updated state
+      (values empty
+              (struct-copy state fvar
+                           [d nd]
+                           [sign nsign]
+                           [v nv]
+                           [board nboard])))))
  
