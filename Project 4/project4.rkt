@@ -39,7 +39,7 @@
          [q (node (move B "b6" "b7") (list m))]
          [r (node (move W "c6" "c7") (list n))]
          [s (node (move W "g7" "f6") (list o p q))]
-         [t (node (move B "a6" "b7") (list r s))]
+         [t (node (move B "a6" "b6") (list r s))]
 
          [u (node (move W "e5" "d6") empty)]
          [v (node (move W "c6" "b7") empty)]
@@ -222,7 +222,7 @@
 ;Ever node has a parent, child sibling.
 (struct snode (p c s))
 
-(struct state (end d m v from to parent child sibling who sign board))
+(struct state (end d moves m v from to parent child sibling who sign board))
 ;(struct-copy state cstate [i 10])
 ; to change one thing in a struct, (struct-copy `struct name` `struct instance` [`thing` `new value`])
 
@@ -242,15 +242,16 @@
 
 ;;;;-------Grammar functions------
 (define BIG_NUMBER 999999)
-(define (m g)
-  (let* ([pieces (G-Ps g)]
-         [filter-for (λ (player)
-                       (λ (p)
-                         (equal? (P-player p) player)))]
-         [w-pieces (filter (filter-for W) pieces)]
-         [b-pieces (filter (filter-for B) pieces)])
-    (- (length w-pieces)
-       (length b-pieces))))
+(define (m n)
+  ;(let* ([pieces (G-Ps g)]
+  ;       [filter-for (λ (player)
+  ;                     (λ (p)
+  ;                       (equal? (P-player p) player)))]
+  ;       [w-pieces (filter (filter-for W) pieces)]
+  ;       [b-pieces (filter (filter-for B) pieces)])
+  ;  (- (length w-pieces)
+  ;     (length b-pieces))))
+  (node-children n))
 (define (LEAF a b)
   (if (equal? a  BIG_NUMBER)
       b
@@ -286,15 +287,17 @@
   (if (equal? 1 SN)
       (max v1 v2)
       (min v1 v2)))
-(define (CUT fvar)
+(define (CUT i fvar)
   (let* ([ps (G-Ps (state-board fvar))]
          [p-pos (map P-pos ps)])
   (and
+   (not (empty? (list-ref (state-moves fvar) i)))
    (member (convert-move (move-p1 (head moves-global))) (map P-pos (G-Ps (state-board fvar))))
    (if (check-duplicates p-pos)
        #f
        #t))))
 ;;;; Global State
+(define did2 0)
 ;;;;-------GRS--------
 (define (Grs1 i)
   (define Q1
@@ -302,7 +305,8 @@
   (let ([start-state (state 
                       1 ;end
                       0 ;d
-                      (list (m reti)) ;m
+                      (list (m pdf18p10)) ;moves
+                      (list 0) ;m
                       (list BIG_NUMBER) ;v
                       (list 0) ;from
                       (list 0) ;to
@@ -316,59 +320,76 @@
     
 
 (define (Grs2 i fvar)
-  (define Q2
-    (and
-     (or
-      (equal? (state-sign fvar) (move-player (first moves-global)))
-      (and
-       (equal? (state-sign fvar) -1)
-       (equal? (move-player (first moves-global)) 2)))
-     (< (state-d fvar) 20)
-     (CUT fvar)))
-  (if Q2
-      ;if q2, do Grs2
-      (let* ([np (list-set! (state-parent fvar) (state-end fvar) i)]
-             ;FIX: problems here due to non initialized, check if child(i) exists.
-             [nzc (if (>= (length (state-child fvar)) (+ i 1))
-                      (not (zero? (list-ref (state-child fvar) i)))
-                      #f)]
-             [ns (if nzc
-                     (list-set! (state-sibling fvar)
-                                (list-ref (state-child fvar) i)
-                                (state-end fvar))
-                     (list-set! (state-sibling fvar) i 0))]
-             [nc (if nzc
-                     ;FIX: need to add a case here it initialize
-                     ;(list-set! (state-child fvar) i 0)
-                     (list-set! (state-child fvar) i (state-end fvar)))]
-             [nboard (TRANSITION fvar)]
-             [nm (list-set! (state-m fvar) (state-end fvar) 0)]
-             [nv (list-set! (state-v fvar) (state-end fvar) (* BIG_NUMBER (state-sign fvar)))]
-             [nwho (list-set! (state-who fvar) (state-end fvar) 0)]
-             [nfrom (list-set! (state-from fvar) (state-end fvar) 0)]
-             [nto (list-set! (state-to fvar) (state-end fvar) 0)]
-             [nstate (struct-copy state fvar
-                                  [parent np]
-                                  [child nc]
-                                  [sibling ns]
-                                  [end (+ (state-end fvar) 1)]
-                                  [d (+ (state-d fvar) 1)]
-                                  [sign (- (state-sign fvar))]
-                                  [board nboard]
-                                  [m nm]
-                                  [v nv]
-                                  [who nwho]
-                                  [from nfrom]
-                                  [to nto])])
-        (begin
-         (println (string-append "Grammar 2 with: i=" (number->string i)))
-         (print-state fvar)
-         (println (graph-game (state-board fvar)))
-         (let*-values ([(pis cstate) (Grs2 (state-end fvar) nstate)]
-                       [(pis2 cstate2) (Grs2 i cstate)])
-           (values (append pis (list (state-end fvar)) pis2) cstate2))))
-      ;else do Grs3
-      (Grs3 i fvar)))
+  (if (empty? moves-global)
+      (values empty fvar)
+      (begin
+        (let([Q2
+              (and
+               (or
+                (equal? (state-sign fvar) (move-player (first moves-global)))
+                (and
+                 (equal? (state-sign fvar) -1)
+                 (equal? (move-player (first moves-global)) 2)))
+               (< (state-d fvar) 20)
+               (CUT i fvar))])
+          (if Q2
+              ;if q2, do Grs2
+              (let* ([np (list-set! (state-parent fvar) (state-end fvar) i)]
+                     ;FIX: problems here due to non initialized, check if child(i) exists.
+                     [nzc (if (>= (length (state-child fvar)) (+ i 1))
+                              (not (zero? (list-ref (state-child fvar) i)))
+                              #f)]
+                     [ns (if nzc
+                             (list-set! (state-sibling fvar)
+                                        (list-ref (state-child fvar) i)
+                                        (state-end fvar))
+                             (list-set! (state-sibling fvar) i 0))]
+                     [nc (if nzc
+                             ;FIX: need to add a case here it initialize
+                             ;(list-set! (state-child fvar) i 0)
+                             (state-child fvar)
+                             (list-set! (state-child fvar) i (state-end fvar)))]
+                     [nboard (TRANSITION fvar)]
+                     [movesi (list-ref (state-moves fvar) i)]
+                     ;first, remove mi from m
+                     [nmoves2 (list-set! (state-moves fvar) i (tail movesi))]
+                     ;now, we set the children to its child
+                     [nmoves (list-set! nmoves2 (state-end fvar) (node-children (first movesi)))]
+                     [kill? (check-duplicates (map P-pos (G-Ps nboard)))]
+                     [nm (list-set! (state-m fvar) (state-end fvar) (if kill?
+                                                                        (if (equal? (move-player (node-move (first movesi))) B)
+                                                                            -1
+                                                                            1)
+                                                                        0))]
+                     [nv (list-set! (state-v fvar) (state-end fvar) (* BIG_NUMBER (state-sign fvar)))]
+                     [nwho (list-set! (state-who fvar) (state-end fvar) 0)]
+                     [nfrom (list-set! (state-from fvar) (state-end fvar) 0)]
+                     [nto (list-set! (state-to fvar) (state-end fvar) 0)]
+                     [nstate (struct-copy state fvar
+                                          [parent np]
+                                          [child nc]
+                                          [sibling ns]
+                                          [end (+ (state-end fvar) 1)]
+                                          [d (+ (state-d fvar) 1)]
+                                          [sign (- (state-sign fvar))]
+                                          [board nboard]
+                                          [moves nmoves]
+                                          [m nm]
+                                          [v nv]
+                                          [who nwho]
+                                          [from nfrom]
+                                          [to nto])])
+                (begin
+                  (println did2)
+                  (set! did2 (+ did2 1))
+                  (println (string-append "Grammar 2 with: i=" (number->string i)))
+                  (print-state fvar)
+                  (println (graph-game (state-board fvar)))
+                  (let*-values ([(pis cstate) (Grs2 (state-end fvar) nstate)]
+                                [(pis2 cstate2) (Grs2 i cstate)])
+                    (values (append pis (list (state-end fvar)) pis2) cstate2))))
+              ;else do Grs3
+              (Grs3 i fvar))))))
                
 
 (define (Grs3 i fvar)
